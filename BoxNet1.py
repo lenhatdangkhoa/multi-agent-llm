@@ -1,5 +1,4 @@
-GRID_WIDTH = 2
-GRID_HEIGHT = 4
+
 
 class Box:
     def __init__(self, color, positions):
@@ -14,7 +13,9 @@ class Agent:
 
 class BoxNet1:
     def __init__(self):
-        self.grid = [[0 for _ in range(GRID_WIDTH)] for _ in range(GRID_HEIGHT)]
+        self.GRID_WIDTH = 2
+        self.GRID_HEIGHT = 4
+        self.grid = [[0 for _ in range(self.GRID_WIDTH)] for _ in range(self.GRID_HEIGHT)]
         self.boxes = [Box("blue", [(0,0)]), Box("yellow", [(0,1), (0,3)]), Box("red", [(1,2)])]
         self.goals = {
             "blue": [(1,1)],
@@ -26,7 +27,7 @@ class BoxNet1:
     def move_box(self, box, box_location, direction):
         change = {"up": (-1, 0), "down": (1, 0), "left": (0, -1), "right": (0, 1)}
         new_x, new_y = box_location[0] + change[direction][0], box_location[1] + change[direction][1]
-        if new_x < 0 or new_x >= GRID_HEIGHT or new_y < 0 or new_y >= GRID_WIDTH:
+        if new_x < 0 or new_x >= self.GRID_WIDTH or new_y < 0 or new_y >= self.GRID_HEIGHT:
             print("Invalid move")
             return False
         if box_location in box.positions:
