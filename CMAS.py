@@ -16,7 +16,7 @@ def format_prompt(env: BoxNet1):
         "Multiple boxes can occupy the same cell.",
         "There are three possible actions for each agent: move box to an ajacent cell (up, down, left, right),"
         "move box to the goal cell if the box is in the same cell, or do nothing.",
-        f"Grid size: {BoxNet1.GRID_WIDTH} rows x {BoxNet1.GRID_HEIGHT} columns\n",
+        f"Grid size: {env.GRID_WIDTH} rows x {env.GRID_HEIGHT} columns\n",
         "Boxes:"
     ]
 
@@ -41,7 +41,7 @@ formatted_prompt = format_prompt(BoxNet1.BoxNet1())
 print(formatted_prompt)
 def call_llm(prompt):
     response = client.chat.completions.create(
-        model="gpt-4o",  # or "gpt-3.5-turbo"
+        model="gpt-3.5-turbo",  # or "gpt-3.5-turbo"
         messages=[{"role": "system", "content": "You are a helpful robot task planner."},
                   {"role": "user", "content": prompt}],
         temperature=0

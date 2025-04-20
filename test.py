@@ -29,10 +29,8 @@ def parse_llm_plan(text):
 
 
 actions = parse_llm_plan("""- Agent 0: move blue box from (0, 0) to (1, 0) [down]
-- Agent 4: move blue box from (1, 0) to (1, 1) [right]
-- Agent 1: move yellow box from (0, 1) to (1, 1) [down]
-- Agent 5: move yellow box from (1, 1) to (1, 0) [left]
-- Agent 3: move yellow box from (0, 3) to (1, 3) [down]
+- Agent 4: move yellow box from (0, 1) to (1, 1) [down]
+- Agent 5: move yellow box from (0, 3) to (1, 3) [down]
 - Agent 6: move red box from (1, 2) to (0, 2) [up]""")
 
 #print(actions)
