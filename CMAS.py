@@ -13,6 +13,7 @@ def format_prompt(env: BoxNet1):
         "If the colored box has multiple goals, the agent should move it to any goal. Make sure all the colored boxes are moved to their goals.",
         "Each agent can only move boxes that are within its own grid cell.",
         "Each agent is stuck in its own cell and can only move boxes to adjacent cells.",
+        "A goal cannot be occupied by more than one box.",
         "Multiple boxes can occupy the same cell.",
         "There are three possible actions for each agent: move box to an ajacent cell (up, down, left, right),"
         "move box to the goal cell if the box is in the same cell, or do nothing.",
@@ -31,6 +32,8 @@ def format_prompt(env: BoxNet1):
 
     lines.append("\nFor example, if the blue box is at (0, 0) and the goal is at (1, 1),")
     lines.append("the agent can move the blue box from (0, 0) to (1, 0) and then to (1, 1).")
+    lines.append("\nAnother example, if the blue goal is at (0, 0), then only one blue box can be moved to (0, 0).")
+    lines.append("If there are two blue boxes, then the agent has to find another goal for one of the boxes.")
     lines.append("\nPlease return an ordered list of actions in the following format:")
     lines.append("- Agent [id]: move [color] box from (x, y) to (new x, new y) [direction]")
     
@@ -41,7 +44,7 @@ formatted_prompt = format_prompt(BoxNet1.BoxNet1())
 print(formatted_prompt)
 def call_llm(prompt):
     response = client.chat.completions.create(
-        model="gpt-3.5-turbo",  # or "gpt-3.5-turbo"
+        model="gpt-4",  # or "gpt-3.5-turbo"
         messages=[{"role": "system", "content": "You are a helpful robot task planner."},
                   {"role": "user", "content": prompt}],
         temperature=0

@@ -5,7 +5,7 @@ from collections import defaultdict
 def parse_llm_plan(text):
     actions = []
 
-    pattern_move = r"- Agent (\d+): move (\w+) box from \((\d+), (\d+)\) to \((\d+), (\d+)\) \[(\w+)\]"
+    pattern_move = r"- Agent (\d+): move (\w+) box from \((\d+), (\d+)\) to \((\d+), (\d+)\) (\w+)"
     pattern_nothing = r"- Agent (\d+): do nothing"
 
     for line in text.strip().split('\n'):
@@ -28,10 +28,15 @@ def parse_llm_plan(text):
     return actions
 
 
-actions = parse_llm_plan("""- Agent 0: move blue box from (0, 0) to (1, 0) [down]
-- Agent 4: move yellow box from (0, 1) to (1, 1) [down]
-- Agent 5: move yellow box from (0, 3) to (1, 3) [down]
-- Agent 6: move red box from (1, 2) to (0, 2) [up]""")
+actions = parse_llm_plan("""- Agent 0: move blue box from (0, 0) to (1, 0) down
+- Agent 1: move yellow box from (0, 1) to (1, 1) down
+- Agent 3: move yellow box from (0, 3) to (1, 3) down
+- Agent 4: move yellow box from (1, 1) to (1, 0) left
+- Agent 5: move blue box from (1, 0) to (1, 1) right
+- Agent 6: move red box from (1, 2) to (0, 2) up
+- Agent 6: move red box from (1, 2) to (0, 0) up
+- Agent 2: move red box from (0, 2) to (0, 1) left
+- Agent 1: move red box from (0, 1) to (0, 0) left""")
 
 #print(actions)
 def execute_plan(env, actions):

@@ -16,11 +16,11 @@ class BoxNet1:
         self.GRID_WIDTH = 2
         self.GRID_HEIGHT = 4
         self.grid = [[0 for _ in range(self.GRID_WIDTH)] for _ in range(self.GRID_HEIGHT)]
-        self.boxes = [Box("blue", [(0,0)]), Box("yellow", [(0,1), (0,3)]), Box("red", [(1,2)])]
+        self.boxes = [Box("blue", [(0,0)]), Box("yellow", [(0,1), (0,3)]), Box("red", [(1,2), (1,2)])]
         self.goals = {
             "blue": [(1,1)],
             "yellow": [(1,0), (1,3)],
-            "red": [(0,2)]
+            "red": [(0,0), (0,2)]
         }        
         self.agents = [Agent((0,0)), Agent((0,1)), Agent((0,2)), Agent((0,3)), Agent((1,0)), Agent((1,1)), Agent((1,2)), Agent((1,3))]
 
