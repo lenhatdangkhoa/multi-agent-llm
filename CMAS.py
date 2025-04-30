@@ -32,7 +32,7 @@ def format_prompt(env: BoxNet1):
 
     lines.append("\nFor example, if the blue box is at (0, 0) and the goal is at (1, 1),")
     lines.append("the agent can move the blue box from (0, 0) to (1, 0) and then to (1, 1).")
-    lines.append("\nAnother example, if the blue goal is at (0, 0), then only one blue box can be moved to (0, 0).")
+    lines.append("\nAnother example, if the blue goal is at (0, 0), then only one blue box can be moved to (0, 0)!")
     lines.append("If there are two blue boxes, then the agent has to find another goal for one of the boxes.")
     lines.append("\nPlease return an ordered list of actions in the following format:")
     lines.append("- Agent [id]: move [color] box from (x, y) to (new x, new y) [direction]")
@@ -44,7 +44,7 @@ formatted_prompt = format_prompt(BoxNet1.BoxNet1())
 print(formatted_prompt)
 def call_llm(prompt):
     response = client.chat.completions.create(
-        model="gpt-4",  # or "gpt-3.5-turbo"
+        model="gpt-4o",  # or "gpt-3.5-turbo"
         messages=[{"role": "system", "content": "You are a helpful robot task planner."},
                   {"role": "user", "content": prompt}],
         temperature=0

@@ -91,7 +91,6 @@ def dmas_plan(boxes, goals):
     while True:
         for agent_id in range(NUM_AGENTS):
             prompt = build_prompt(agent_id, boxes, goals, turn_history)
-            #print(prompt)
             reply = query_llm(prompt).strip()
             print(f"R{agent_id}: {reply}")
             turn_history.append({f"R{agent_id}": reply})
