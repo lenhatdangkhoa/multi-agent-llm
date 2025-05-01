@@ -18,25 +18,36 @@ class HMAS2:
     def format_central_prompt(self, feedback=None):
         lines = ["You are a centralized planner. Provide a plan as a JSON object."]
         for i, agent in enumerate(self.env.agents):
-            lines.append(f"- Agent {i} at {agent.position}")
+            lines.append(f"- Agent {i} at {getattr(agent, 'cell_position', getattr(agent, 'position', 'unknown'))}")
         for box in self.env.boxes:
-            lines.append(f"- {box.color} box at {box.position if hasattr(box,'position') else box.positions}")
+            lines.append(f"- {box.color} box at {getattr(box, 'position', getattr(box, 'positions', 'unknown'))}")
         for color, positions in self.env.goals.items():
             lines.append(f"- Goal for {color} at {positions[0]}")
         if feedback:
             lines.append("\nPrevious agent feedback:")
             for k, v in feedback.items():
                 lines.append(f"{k}: {v}")
-        lines.append("\nReturn: {\"Agent0\": \"move...\", ...}")
+        lines.append("\nYour plan must only use the following actions for each agent:")
+        lines.append("- move [color] box from (row,col) to (row,col) [direction] (direction: up, down, left, right)")
+        lines.append("- standby")
+        lines.append("- do nothing")
+        lines.append("\nReturn the plan ONLY as a JSON object like this example:")
+        lines.append("{\"Agent0\": \"move blue box from (0,0) to (1,0) down\", \"Agent1\": \"standby\"}")
         return "\n".join(lines)
 
     def format_local_prompt(self, agent_id, action):
-        return f"You are Agent {agent_id}. Do you agree with your assigned action: '{action}'?\nRespond ONLY with:\n- AGREE\n- DISAGREE: [reason]"
+        return (
+            f"You are Agent {agent_id}. Do you agree with your assigned action: '{action}'?\n"
+            "Respond ONLY with:\n- AGREE\n- DISAGREE: [reason]"
+        )
 
     def call_llm(self, prompt):
         response = client.chat.completions.create(
             model="gpt-4",
-            messages=[{"role": "system", "content": "You are a helpful agent."}, {"role": "user", "content": prompt}],
+            messages=[
+                {"role": "system", "content": "You are a helpful agent."},
+                {"role": "user", "content": prompt}
+            ],
             temperature=0
         )
         self.token_count += response.usage.total_tokens
@@ -45,20 +56,16 @@ class HMAS2:
     def run_planning(self, max_iterations=5):
         print("--- HMAS-2 Planning ---")
         feedback = None
-
         for iteration in range(max_iterations):
             central_prompt = self.format_central_prompt(feedback)
             response = self.call_llm(central_prompt)
-
             try:
                 current_plan = json.loads(response)
             except json.JSONDecodeError:
                 print("Central plan invalid")
                 return None
-
             feedback = {}
             all_agree = True
-
             for agent_id, action in current_plan.items():
                 idx = int(agent_id.replace("Agent", ""))
                 prompt = self.format_local_prompt(idx, action)
@@ -66,10 +73,8 @@ class HMAS2:
                 feedback[agent_id] = agent_response
                 if not agent_response.startswith("AGREE"):
                     all_agree = False
-
             if all_agree:
                 print("✅ All agents agreed.")
                 return current_plan
-
         print("❌ No consensus reached.")
         return None

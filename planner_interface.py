@@ -29,8 +29,8 @@ def run_hmas2(env):
     return final_plan, planner.token_count, planner.env
 
 PLANNERS = {
-    # # "CMAS": lambda env: run_cmas(env),
-    # # "DMAS": lambda env: run_dmas_wrapper(env),
-    # "HMAS-1": lambda env: run_hmas1(env),
+    "CMAS": lambda env: run_cmas(env),
+    "DMAS": lambda env: run_dmas_wrapper(env),
+    "HMAS-1": lambda env: run_hmas1(env),
     "HMAS-2": lambda env: run_hmas2(env)
 }
