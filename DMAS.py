@@ -58,6 +58,24 @@ def apply_action(env, agent_id, box_color, from_pos, direction):
             return env.move_box(box, from_pos, direction)
     return False
 
+def dmas_plan(boxes, goals):
+    global turn_history
+    turn_history = []
+    actions = []
+    
+    while True:
+        for agent_id in range(NUM_AGENTS):
+            prompt = build_prompt(agent_id, boxes, goals, turn_history)
+            reply = query_llm(prompt).strip()
+            print(f"R{agent_id}: {reply}")
+            turn_history.append({f"R{agent_id}": reply})
+            if "ACTION" in reply:
+                apply_action(reply, boxes)
+            elif "EXECUTE" in reply:
+                print("Execution phase triggered.")
+        break
+    return actions  # or do execution here if you want
+
 def dmas_plan(plan_text, env):
     """Parse and apply DMAS plan to the environment."""
     pattern_move = r"- Agent (\\d+): move (\\w+) box from \\((\\d+), (\\d+)\\) to \\((\\d+), (\\d+)\\) (\\w+)"
