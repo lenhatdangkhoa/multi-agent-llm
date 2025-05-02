@@ -91,6 +91,9 @@ class HMAS2:
     def run_planning(self, max_iterations=5):
         print("--- HMAS-2 Planning ---")
         feedback = None
+        best_plan = None
+        best_agreement_count = 0
+
         for iteration in range(max_iterations):
             central_prompt = self.format_central_prompt(feedback)
             response = self.call_llm(central_prompt)
@@ -98,18 +101,40 @@ class HMAS2:
                 current_plan = json.loads(response)
             except json.JSONDecodeError:
                 print("Central plan invalid")
-                return None
+                continue  # Try again with the next iteration
+
             feedback = {}
             all_agree = True
+            agreement_count = 0
+
             for agent_id, action in current_plan.items():
                 idx = int(agent_id.replace("Agent", ""))
                 prompt = self.format_local_prompt(idx, action)
                 agent_response = self.call_llm(prompt)
                 feedback[agent_id] = agent_response
-                if not agent_response.startswith("AGREE"):
+                if agent_response.startswith("AGREE"):
+                    agreement_count += 1
+                else:
                     all_agree = False
+
+            # Keep track of the best plan so far
+            if agreement_count > best_agreement_count:
+                best_agreement_count = agreement_count
+                best_plan = current_plan
+
             if all_agree:
                 print("✅ All agents agreed.")
                 return current_plan
-        print("❌ No consensus reached.")
-        return None
+
+        # If no consensus was reached, return the best plan we found
+        if best_plan:
+            print(f"⚠️ Partial consensus reached ({best_agreement_count} agents agreed). Using best plan.")
+            return best_plan
+        else:
+            # If we couldn't get any valid plan, return a default plan
+            print("❌ No valid plan found. Using fallback plan.")
+            fallback_plan = {}
+            for i in range(len(self.env.agents)):
+                fallback_plan[f"Agent{i}"] = "do nothing"
+            return fallback_plan
+
