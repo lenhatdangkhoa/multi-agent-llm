@@ -165,7 +165,7 @@ def simulate_plan(env, actions, delay=1000):
                 return
 
 if __name__ == "__main__":
-    env_classes = [BoxNet1, BoxNet2]
+    env_classes = [BoxNet2]
 
     # Scenario for BoxNet2 matching the paper's Figure 4(b)
     boxes_data = [
