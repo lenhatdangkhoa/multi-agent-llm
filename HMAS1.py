@@ -3,7 +3,7 @@ from openai import OpenAI
 from dotenv import load_dotenv
 import os
 import BoxNet1
-import BoxNet2
+import BoxNet2_test
 
 load_dotenv()
 client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
@@ -12,23 +12,56 @@ class HMAS1:
     def __init__(self, environment_type="boxnet1"):
         self.token_count = 0
         self.environment_type = environment_type
-        self.env = BoxNet1.BoxNet1() if environment_type == "boxnet1" else BoxNet2.BoxNet2()
+        self.env = BoxNet1.BoxNet1() if environment_type == "boxnet1" else BoxNet2_test.BoxNet2()
         self.turn_history = []
 
     def format_central_prompt(self):
         lines = ["You are a centralized planner. Your task is to propose a multi-agent plan."]
+
+        if self.environment_type == "boxnet1":
+            lines.append(f"Environment: BoxNet1 with grid size {self.env.GRID_WIDTH}x{self.env.GRID_HEIGHT}")
+            lines.append("Each agent is fixed in its cell and can only move boxes to adjacent cells.")
+            lines.append("Multiple boxes can occupy the same cell, but a goal can only have one box.")
+        else:  # boxnet2
+            lines.append(f"Environment: BoxNet2 with grid size {self.env.GRID_WIDTH}x{self.env.GRID_HEIGHT}")
+            lines.append("Each agent is responsible for the four corners of its cell.")
+            lines.append("Boxes can only be moved between corners, and each corner can only hold one box.")
+            lines.append("Avoid placing multiple boxes on the same corner to prevent collisions.")
+
+        # Add agent information
         for i, agent in enumerate(self.env.agents):
-            lines.append(f"- Agent {i} at {getattr(agent, 'cell_position', getattr(agent, 'position', 'unknown'))}")
+            if self.environment_type == "boxnet1":
+                lines.append(f"- Agent {i} at position {agent.position}")
+            else:
+                lines.append(f"- Agent {i} responsible for corners {agent.cell}")
+
+        # Add box information
         for box in self.env.boxes:
-            lines.append(f"- {box.color} box at {getattr(box, 'position', getattr(box, 'positions', 'unknown'))}")
+            if self.environment_type == "boxnet1":
+                lines.append(f"- {box.color} box at positions {box.positions}")
+            else:
+                for pos in box.positions:
+                    lines.append(f"- {box.color} box at corner {pos}")
+
+        # Add goal information
         for color, positions in self.env.goals.items():
-            lines.append(f"- Goal for {color} at {positions[0]}")
+            lines.append(f"- Goal for {color} at {positions}")
+
+        # Add action instructions
         lines.append("\nYour plan must only use the following actions for each agent:")
-        lines.append("- move [color] box from (row,col) to (row,col) [direction] (direction: up, down, left, right)")
-        lines.append("- standby")
-        lines.append("- do nothing")
+        if self.environment_type == "boxnet1":
+            lines.append(
+                "- move [color] box from (row,col) to (row,col) [direction] (direction: up, down, left, right)")
+            lines.append("- do nothing")
+        else:
+            lines.append(
+                "- move [color] box from (row,col) to (row,col) [direction] (direction: up, down, left, right)")
+            lines.append("- move [color] box to goal")
+            lines.append("- do nothing")
+
         lines.append("\nRespond ONLY in JSON format like this example:")
-        lines.append("{\"Agent0\": \"move red box from (1,2) to (0,2) up\", \"Agent1\": \"standby\", \"Agent2\": \"do nothing\"}")
+        lines.append("{\"Agent0\": \"move red box from (1,2) to (0,2) up\", \"Agent1\": \"do nothing\"}")
+
         return "\n".join(lines)
 
     def format_local_prompt(self, agent_id, current_plan):
