@@ -166,7 +166,7 @@ class HMAS1:
 
     def call_llm(self, prompt):
         response = client.chat.completions.create(
-            model="gpt-4.1",
+            model="gpt-4",
             messages=[
                 {"role": "system", "content": "You are a helpful agent."},
                 {"role": "user", "content": prompt}

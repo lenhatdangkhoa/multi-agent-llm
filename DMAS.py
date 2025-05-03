@@ -11,6 +11,11 @@ client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 CELL_GRID = [[0, 1, 2, 3], [4, 5, 6, 7]]  # 2x4 grid flattened
 NUM_AGENTS = 8
 
+_MOVE_PAT  = re.compile(r".*?Agent\s*(\d+):\s*move\s+(\w+)\s+box\s+from\s*\((\d+),\s*(\d+)\)\s*to\s*\((\d+),\s*(\d+)\).*?(\bup|\bdown|\bleft|\bright)?", re.I)
+_GOAL_PAT  = re.compile(r".*?Agent\s*(\d+):\s*move\s+(\w+)\s+box\s+to\s+goal", re.I)
+_NONE_PAT  = re.compile(r".*?Agent\s*(\d+):\s*do\s+nothing", re.I)
+
+
 # DMAS state
 turn_history = []
 #env = BoxNet1.BoxNet1()
@@ -117,14 +122,14 @@ def parse_llm_plan(text):
 
     return actions
 def query_llm(prompt):
-    response = client.chat.completions.create(
-        model="gpt-4.1",
-        messages=[{"role": "user", "content": prompt}],
-        temperature=0,
+    resp = client.chat.completions.create(
+        model="gpt-4",
+        messages=[{"role":"user","content":prompt}],
+        temperature=0
     )
-    total_tokens = response.usage.total_tokens
-    print(f"Total tokens used: {total_tokens}")
-    return response.choices[0].message.content
+    toks = resp.usage.total_tokens
+    print(f"Total tokens used: {toks}")
+    return resp.choices[0].message.content, toks
 def apply_action(reply, boxes):
 
     parts = reply.split()
@@ -143,36 +148,48 @@ def apply_action(reply, boxes):
     for box in boxes:
         print(f"Box {box.color} is now at {box.positions}")
 
+def parse_action(text: str):
+    text = text.strip()
+
+    # move …
+    if m := _MOVE_PAT.match(text):
+        aid, col, r1, c1, _, _, dir_raw = m.groups()
+        direction = (dir_raw or "stay").lower()
+        return int(aid), col.lower(), (int(r1), int(c1)), direction
+
+    # move to goal …
+    if m := _GOAL_PAT.match(text):
+        aid, col = m.groups()
+        return int(aid), col.lower(), None, "goal"
+
+    # do nothing …
+    if m := _NONE_PAT.match(text):
+        return int(m.group(1)), "none", None, "stay"
+
+    # fallback
+    return -1, "none", None, "stay"
+
 def dmas_plan(env, boxes, goals):
-    global turn_history
+    global turn_history, tokens_used
     turn_history = []
-    actions = []
-    iteration = 0
+
+    actions   = []
     api_calls = 0
-    while iteration < 3:
-        for agent_id in range(NUM_AGENTS):
-            prompt = build_prompt(env, agent_id, boxes, goals, turn_history)
+
+    # three rounds of dialogue
+    for _ in range(3):
+        for aid in range(NUM_AGENTS):
+            prompt = build_prompt(env, aid, boxes, goals, turn_history)
             print(prompt)
-            reply = query_llm(prompt).strip()
-            action = parse_llm_plan(reply)
-            actions.append(action[0])
+            reply, tokens_used = query_llm(prompt)
+            reply = reply.strip()
+            act_tuple = parse_action(reply)
+            actions.append(act_tuple)
             api_calls += 1
-            print(f"R{agent_id}: {reply}")
             turn_history.append(reply)
-            # if "ACTION" in reply:
-            #     apply_action(reply, boxes)
-            # elif "EXECUTE" in reply:
-            #     print("Execution phase triggered.")
-            #     break
-        iteration += 1
-    
-    # for entry in turn_history:
-    #     for k, v in entry.items():
-    #         if "ACTION:" in v:
-    #             actions.append((k, v.replace("ACTION:", "").strip()))
 
-    return actions, api_calls  # list of tuples (robot_id, action string)
-
+    # return either 2‑ or 3‑tuple
+    return actions, api_calls, tokens_used  # tokens are logged in batch tester
 # print(dmas_plan(env.boxes, env.goals))
 # for box in env.boxes:
 #     print(f"Box {box.color} is now at {box.positions}")

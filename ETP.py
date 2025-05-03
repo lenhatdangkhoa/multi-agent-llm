@@ -85,7 +85,7 @@ def call_llm(prompt):
     )
     total_tokens = response.usage.total_tokens
     print(f"Total tokens used: {total_tokens}")
-    return response.choices[0].message.content
+    return response.choices[0].message.content, total_tokens
 
 def parse_llm_plan(text):
     actions = []
