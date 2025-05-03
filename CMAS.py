@@ -63,7 +63,7 @@ def format_prompt(env):
 
         lines.append("\nAgents:")
         for i, agent in enumerate(env.agents):
-            lines.append(f"- Agent {i} responsible for cells {agent.cell}")
+            lines.append(f"- Agent {i} responsible for cells {agent.position}")
 
         lines.append("\nEach agent is responsible for four corners of its own cell.")
         lines.append("\nIf the blue box is at (0, 1) and the goal is at (0,0), (0,1), (1,0), (1,1), then agent 1 can move this blue box to goal.")
@@ -77,7 +77,7 @@ def format_prompt(env):
 def call_llm(prompt):
     """Send the centralized prompt to the LLM."""
     response = client.chat.completions.create(
-        model="gpt-4",  # or "gpt-3.5-turbo"
+        model="gpt-4.1",  # or "gpt-3.5-turbo"
         messages=[{"role": "system", "content": "You are a helpful robot task planner."},
                   {"role": "user", "content": prompt}],
         temperature=0
@@ -139,7 +139,7 @@ def execute_plan(env, actions):
             print(f"⚠️ Agent {agent_id} could not find {color} box at {from_pos}")
             return False
         
-        time.sleep(2) # For debugging
+        time.sleep(1) # For debugging
     print("\n🧱 Final Environment State:")
     print(env.goals)
     for box in env.boxes:
@@ -152,6 +152,7 @@ def runCMAS(env):
     response, total_tokens = call_llm(prompt)
     print(response)
     actions = parse_llm_plan(response)
+    print(actions)
     execute_plan(env, actions)
 
 

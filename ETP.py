@@ -64,7 +64,7 @@ def intialPlan(env):
 
         lines.append("\nAgents:")
         for i, agent in enumerate(env.agents):
-            lines.append(f"- Agent {i} responsible for cells {agent.cell}")
+            lines.append(f"- Agent {i} responsible for cells {agent.position}")
 
         lines.append("\nEach agent is responsible for four corners of its own cell.")
         lines.append("\nIf the blue box is at (0, 1) and the goal is at (0,0), (0,1), (1,0), (1,1), then agent 1 can move this blue box to goal.")
@@ -151,12 +151,13 @@ def execute_plan(env, actions):
     return True
 
 def runETP():
-    env = BoxNet1.BoxNet1()
+    env = BoxNet2_test.BoxNet2()
     prompt = intialPlan(env)
     response = call_llm(prompt)
     print(response)
     actions = parse_llm_plan(response)
-    while (not execute_plan(env, actions)):
+    iteration = 0
+    while (not execute_plan(env, actions) and iteration < 5):
         print(env.goals)
         for box in env.boxes:
             print(f"{box.color} box positions: {box.positions}")
@@ -164,7 +165,8 @@ def runETP():
         response = call_llm(prompt)
         print(response)
         actions = parse_llm_plan(response)
+        iteration += 1
     
     
-if __name__ == "__main__":
-    runETP()
+# if __name__ == "__main__":
+#     runETP()

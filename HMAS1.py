@@ -166,7 +166,7 @@ class HMAS1:
 
     def call_llm(self, prompt):
         response = client.chat.completions.create(
-            model="gpt-4",
+            model="gpt-4.1",
             messages=[
                 {"role": "system", "content": "You are a helpful agent."},
                 {"role": "user", "content": prompt}
@@ -216,8 +216,9 @@ class HMAS1:
         actions = self.parse_llm_plan(final_plan)
         print("\n== Final Plan ==")
         print(final_plan)
-        return final_plan, api_calls
         #self.execute_plan(self.env, actions)
+
+        return final_plan, api_calls
 
 # hmas = HMAS1(environment_type="boxnet2")
 # hmas.runHMAS1()
