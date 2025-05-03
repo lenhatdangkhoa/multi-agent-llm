@@ -142,7 +142,7 @@ def execute_plan(env, actions):
             print(f"⚠️ Agent {agent_id} could not find {color} box at {from_pos}")
             return False
         
-        time.sleep(2) # For debugging
+        time.sleep(1) # For debugging
     print("\n🧱 Final Environment State:")
     print(env.goals)
     for box in env.boxes:
@@ -151,7 +151,7 @@ def execute_plan(env, actions):
     return True
 
 def runETP():
-    env = BoxNet2_test.BoxNet2()
+    env = BoxNet1.BoxNet1()
     prompt = intialPlan(env)
     response = call_llm(prompt)
     print(response)
@@ -162,6 +162,7 @@ def runETP():
             print(f"{box.color} box positions: {box.positions}")
         prompt = intialPlan(env)
         response = call_llm(prompt)
+        print(response)
         actions = parse_llm_plan(response)
     
     
