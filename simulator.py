@@ -12,10 +12,10 @@ from BoxNet2_test import BoxNet2
 
 # Import planners
 from CMAS import runCMAS
-#from DMAS import run_dmas
 from HMAS1 import HMAS1
 from HMAS2 import HMAS2
 from ETP import runETP
+from DMAS import dmas_plan
 
 
 def parse_llm_plan(text):
@@ -246,23 +246,23 @@ def run_planner(env, planner_name):
         from CMAS import format_prompt, call_llm
         prompt = format_prompt(env)
         response, tokens = call_llm(prompt)
+        print("RESSSSS: " , response)
         return response, 1, env
     elif planner_name == "DMAS":
         #from DMAS import run_dmas
         #plan_text, total_tokens = run_dmas(env)
-        from DMAS import dmas_plan
-        plan_text = dmas_plan(env.boxes, env.goals)
-        return plan_text, env
+        plan_text, api_calls = dmas_plan(env.boxes, env.goals)
+        return plan_text, api_calls, env
     elif planner_name == "HMAS1":
         planner = HMAS1(environment_type="boxnet1" if isinstance(env, BoxNet1) else "boxnet2")
         planner.env = env
-        plan = planner.run_planning()
-        return plan, planner.token_count, planner.env
+        plan, api_calls = planner.runHMAS1()
+        return plan, api_calls, planner.env
     elif planner_name == "HMAS2":
         planner = HMAS2(environment_type="boxnet1" if isinstance(env, BoxNet1) else "boxnet2")
         planner.env = env
-        plan = planner.run_planning()
-        return plan, planner.token_count, planner.env
+        plan, api_calls = planner.runHMAS2()
+        return plan, api_calls, planner.env
     elif planner_name == "ETP":
         from ETP import intialPlan, call_llm, parse_llm_plan
 
@@ -416,9 +416,16 @@ def main():
         env = BoxNet1()
     else:
         env = BoxNet2()
-
+    print(f"Environment: {args.env}")
     # Run planner
     print(f"Running {args.planner} on {args.env}...")
+    if args.planner == "DMAS":
+        actions, api_calls = dmas_plan(env, env.boxes, env.goals)
+        print(actions)
+        if actions:
+            print(f"Simulating plan with {len(actions)} actions...")
+            simulate_plan(env, actions, args.delay)
+            return
     plan_text, api_calls, env = run_planner(env, args.planner)
 
     # Parse plan
@@ -427,7 +434,7 @@ def main():
         return
 
     actions = parse_llm_plan(plan_text)
-
+    print(actions)
     # Simulate plan
     if actions:
         print(f"Simulating plan with {len(actions)} actions...")

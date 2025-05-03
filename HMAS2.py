@@ -34,7 +34,7 @@ class HMAS2:
 
     def call_llm(self, prompt):
         response = client.chat.completions.create(
-            model="gpt-4",
+            model="gpt-4.1",
             messages=[
                 {"role": "system", "content": "You are a helpful planner."},
                 {"role": "user", "content": prompt}
@@ -93,11 +93,12 @@ class HMAS2:
     def runHMAS2(self):
         print("\n== Central Planner Proposing Initial Plan ==")
         central_prompt = self.format_central_prompt()
+        api_calls = 1
         central_plan, _ = self.call_llm(central_prompt)
         print(central_plan)
 
         consensus_reached = False
-        for round_num in range(3):
+        for round_num in range(5):
             print(f"\n== Feedback Round {round_num+1} ==")
             agent_feedback = []
 
@@ -108,6 +109,7 @@ class HMAS2:
                 action_line = match.group(0) if match else "do nothing"
                 
                 prompt = self.format_feedback_prompt(id, agent, action_line)
+                api_calls += 1
                 feedback, _ = self.call_llm(prompt)
                 print(f"Agent {id} Feedback: {feedback}")
                 agent_feedback.append((id, feedback.strip()))
@@ -119,11 +121,11 @@ class HMAS2:
                 feedback_summary = "\n".join([f"Agent {id}: {fb}" for id, fb in agent_feedback])
                 central_prompt += f"\n\nAgents provided feedback on the plan:\n{feedback_summary}\nPlease revise the plan."
                 central_plan, _ = self.call_llm(central_prompt)
-                print("\n🔁 Revised Plan:\n", central_plan)
+                #print("\n🔁 Revised Plan:\n", central_plan)
+        return central_plan, api_calls
+        #final_actions = self.parse_llm_plan(central_plan)
+        #self.execute_plan(self.env, final_actions)
 
-        final_actions = self.parse_llm_plan(central_plan)
-        self.execute_plan(self.env, final_actions)
-
-if __name__ == "__main__":
-    hmas2 = HMAS2(environment_type="boxnet2")
-    hmas2.runHMAS2()
+# if __name__ == "__main__":
+#     hmas2 = HMAS2(environment_type="boxnet2")
+#     hmas2.runHMAS2()

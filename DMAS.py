@@ -3,6 +3,7 @@ from dotenv import load_dotenv
 import os
 import json
 import BoxNet1
+import BoxNet2_test
 import re
 load_dotenv()
 client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
@@ -12,47 +13,112 @@ NUM_AGENTS = 8
 
 # DMAS state
 turn_history = []
-env = BoxNet1.BoxNet1()
-def build_prompt(agent_id, boxes, goals, turn_history):
+#env = BoxNet1.BoxNet1()
+def build_prompt(env, agent_id, boxes, goals, turn_history):
     # Extract this agent's cell position
-    row, col = agent_id // 4, agent_id % 4
     cell_boxes = []
     cell_goals = []
     for c, g in goals.items():
-        for val in g:
-            if (row, col) == val:
-                cell_goals.append({c: (row,col)})
+        if g == env.agents[agent_id].position:
+            cell_goals.append({c: g})
+            
     for b in boxes:
         for val in b.positions:
-            if (row, col) == val:
-                cell_boxes.append({b.color: (row,col)})
-    # cell_boxes = [b.positions for b in boxes if (row, col) == b.positions]
-    # cell_goals = [g for g in goals.values() if (row, col) == g]
-    #print(f"Agent {agent_id} cell boxes: {cell_boxes}, cell goals: {cell_goals}")
-    prompt = f"""You are Robot R{agent_id}, responsible for cell ({row}, {col}).
-                Your job is to suggest an action to help move boxes to their goals.
-                The boxes must be moved to their goals with the correct color.
-                You can move boxes to their goals or to other cells. You can also do nothing.
-                If the box is in your cell and there is a goal with the same color as the box, you can move it to the goal.
-                You can only talk to adjacent robots, not the whole team.
-                The grid is divided into 2 rows and 4 columns, so (0,0) is top left and (1,3) is bottom right.
-                Boxes in your cell: {json.dumps(cell_boxes)}
-                Goals in your cell: {json.dumps(cell_goals)}
+            if val in env.agents[agent_id].position:
+                cell_boxes.append({b.color: val})
 
-                Previous robots said:
-                {json.dumps(turn_history)}
 
-                Respond with one of the following formats:
-                1. "ACTION: move [box color] box from (box location) to cell (target_row, target_col)"
-                2. "ACTION: move [box color] box (box location) to goal"
-                3. "ACTION: do nothing"
-                4. "EXECUTE" (if ready to execute all plans)
-                """
+    #print(f"Agent {agent_id} cell boxes: {cell_boxes}")
+    
+    if (isinstance(env, BoxNet1.BoxNet1)):
+        row, col = agent_id // 4, agent_id % 4
+        cell_boxes = []
+        cell_goals = []
+        for c, g in goals.items():
+            #print(f"Goal {c} is at {g}")
+            for val in g:
+                if (row, col) == val:
+                    cell_goals.append({c: (row,col)})
+        for b in boxes:
+            for val in b.positions:
+                if (row, col) == val:
+                    cell_boxes.append({b.color: (row,col)})
+        prompt = f"""You are Agent {agent_id}, responsible for cell ({row}, {col}).
+                    Your job is to suggest an action to help move boxes to their goals.
+                    The boxes must be moved to their goals with the correct color.
+                    You can move boxes to their goals or to other cells. You can also do nothing.
+                    If the box is in your cell and there is a goal with the same color as the box, you can move it to the goal.
+                    You can only talk to adjacent robots, not the whole team.
+                    The grid is divided into 2 rows and 4 columns, so (0,0) is top left and (1,3) is bottom right.
+                    Boxes in your cell: {json.dumps(cell_boxes)}
+                    Goals in your cell: {json.dumps(cell_goals)}
+
+                    Previous robots said:
+                    {(turn_history)}
+
+                    Respond with one of the following formats:
+                    - Agent [id]: move [color] box from (x, y) to (new x, new y) [direction]
+                    - Agent [id]: do nothing
+                    - Agent [id]: move [color] box to goal
+                    """
+    elif (isinstance(env, BoxNet2_test.BoxNet2)):
+        prompt = [
+        f"You are Agent {agent_id}, responsible for cell ({env.agents[agent_id].position}).",
+        "The grid is represented as a 2D array, where each cell can contain a box",
+        "Your job is to suggest an action to help move boxes to their goals."
+        "Each agent can only move boxes that are around its corners",
+        "For example, agent 1 is responsible for the corners (0,0), (0,1), (1,0), and (1,1).",
+        "Boxes can only be moved at the corners (indicated by their coordinates).",
+        "There are three possible actions for each agent: (1) move a box from one corner to another, (2) move a box from a corner to a goal location within the same cell, or (3) do nothing.",    
+        "Directions are: up (x-1), down (x+1), left (y-1), right (y+1).",    
+        f"Grid size: {env.GRID_WIDTH} rows x {env.GRID_HEIGHT} columns\n",
+        ]
+
+        prompt.append(f"\nBoxes in your cell: {json.dumps(cell_boxes)} Goals in your cell: {json.dumps(cell_goals)}")
+    
+        prompt.append(f"\nPrevious robots said:{(turn_history)}")
+        prompt.append("\nEach agent is responsible for four corners of its own cell.")
+        prompt.append("\nIf the blue box is at (0, 1) and the goal is at (0,0), (0,1), (1,0), (1,1), then agent 1 can move this blue box to goal.")
+        prompt.append("\nYou don't need to say your thought process, just say the action.")
+        prompt.append("\nPlease return an ordered list of actions in one of the following formats:")
+        prompt.append("- Agent [id]: move [color] box from (x, y) to (new x, new y) [direction]")
+        prompt.append("- Agent [id]: do nothing")
+        prompt.append("- Agent [id]: move [color] box to goal")
+        prompt = "\n".join(prompt)
     return prompt
+def parse_llm_plan(text):
+    actions = []
 
+    pattern_move = r".*?Agent (\d+): move (\w+) box from \((\d+), (\d+)\) to \((\d+), (\d+)\)(?: \[?(\w+)\]?)?"
+    pattern_nothing = r".*?Agent (\d+): do nothing"
+    pattern_move_to_goal = r".*?Agent (\d+): move (\w+) box to goal"
+
+    for line in text.strip().split('\n'):
+        move_match = re.match(pattern_move, line.strip())
+        nothing_match = re.match(pattern_nothing, line.strip())
+        move_to_goal_match = re.match(pattern_move_to_goal, line.strip())
+
+        if move_match:
+            agent_id = int(move_match.group(1))
+            color = move_match.group(2)
+            from_pos = (int(move_match.group(3)), int(move_match.group(4)))
+            to_pos = (int(move_match.group(5)), int(move_match.group(6)))
+
+            direction = move_match.group(7)
+            actions.append((agent_id, color, from_pos, direction))
+        
+        elif nothing_match:
+            agent_id = int(nothing_match.group(1))
+            actions.append((agent_id, "none", None, "stay"))
+        elif move_to_goal_match:
+            agent_id = int(move_to_goal_match.group(1))
+            color = move_to_goal_match.group(2)
+            actions.append((agent_id, color, None, "goal"))
+
+    return actions
 def query_llm(prompt):
     response = client.chat.completions.create(
-        model="gpt-4",
+        model="gpt-4.1",
         messages=[{"role": "user", "content": prompt}],
         temperature=0,
     )
@@ -67,7 +133,7 @@ def apply_action(reply, boxes):
     if match:
         row = int(match.group(4))
         col = int(match.group(5))
-        print(f"Moving {color} box to cell ({row}, {col})")
+        #print(f"Moving {color} box to cell ({row}, {col})")
         for box in boxes:
             if box.color == color:
                 for pos in range(len(box.positions)):
@@ -77,34 +143,38 @@ def apply_action(reply, boxes):
     for box in boxes:
         print(f"Box {box.color} is now at {box.positions}")
 
-def dmas_plan(boxes, goals):
+def dmas_plan(env, boxes, goals):
     global turn_history
     turn_history = []
     actions = []
     iteration = 0
-    while iteration < 4:
+    api_calls = 0
+    while iteration < 3:
         for agent_id in range(NUM_AGENTS):
-            prompt = build_prompt(agent_id, boxes, goals, turn_history)
-            #print(prompt)
+            prompt = build_prompt(env, agent_id, boxes, goals, turn_history)
+            print(prompt)
             reply = query_llm(prompt).strip()
+            action = parse_llm_plan(reply)
+            actions.append(action[0])
+            api_calls += 1
             print(f"R{agent_id}: {reply}")
-            turn_history.append({f"R{agent_id}": reply.replace('\\"',"")})
-            if "ACTION" in reply:
-                apply_action(reply, boxes)
-            elif "EXECUTE" in reply:
-                print("Execution phase triggered.")
-                break
+            turn_history.append(reply)
+            # if "ACTION" in reply:
+            #     apply_action(reply, boxes)
+            # elif "EXECUTE" in reply:
+            #     print("Execution phase triggered.")
+            #     break
         iteration += 1
+    
+    # for entry in turn_history:
+    #     for k, v in entry.items():
+    #         if "ACTION:" in v:
+    #             actions.append((k, v.replace("ACTION:", "").strip()))
 
-    for entry in turn_history:
-        for k, v in entry.items():
-            if "ACTION:" in v:
-                actions.append((k, v.replace("ACTION:", "").strip()))
+    return actions, api_calls  # list of tuples (robot_id, action string)
 
-    return actions  # list of tuples (robot_id, action string)
-
-print(dmas_plan(env.boxes, env.goals))
-for box in env.boxes:
-    print(f"Box {box.color} is now at {box.positions}")
-for goal in env.goals:
-    print(f"Goal {goal} is at {env.goals[goal]}")
+# print(dmas_plan(env.boxes, env.goals))
+# for box in env.boxes:
+#     print(f"Box {box.color} is now at {box.positions}")
+# for goal in env.goals:
+#     print(f"Goal {goal} is at {env.goals[goal]}")

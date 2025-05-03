@@ -195,53 +195,9 @@ class HMAS1:
         print(self.env.goals)
         for box in self.env.boxes:
             print(f"{box.color} box positions: {box.positions}")
-    # def run_planning(self, max_dialogue_rounds=3):
-    #     print("--- HMAS-1 Planning ---")
-    #     central_prompt = self.format_central_prompt()
-    #     central_response = self.call_llm(central_prompt)
 
-    #     try:
-    #         current_plan = json.loads(central_response)
-    #     except json.JSONDecodeError:
-    #         print("Central plan invalid")
-    #         # Return a fallback plan instead of None
-    #         fallback_plan = {}
-    #         for i in range(len(self.env.agents)):
-    #             fallback_plan[f"Agent{i}"] = "do nothing"
-    #         return fallback_plan
-
-    #     active_agent_ids = list(range(len(self.env.agents)))
-    #     best_plan = current_plan  # Store the initial plan as the best plan
-
-    #     for round_num in range(max_dialogue_rounds):
-    #         print(f"-- Dialogue Round {round_num + 1} --")
-    #         round_responses = []
-    #         execution_plans = []
-
-    #         for agent_id in active_agent_ids:
-    #             local_prompt = self.format_local_prompt(agent_id, current_plan)
-    #             response = self.call_llm(local_prompt)
-    #             self.turn_history.append({f"Agent{agent_id}": response})
-
-    #             if response.startswith("EXECUTE:"):
-    #                 try:
-    #                     plan_str = response.replace("EXECUTE:", "").strip()
-    #                     plan = json.loads(plan_str)
-    #                     execution_plans.append(plan)
-    #                 except json.JSONDecodeError:
-    #                     print(f"Invalid EXECUTE format from Agent {agent_id}")
-
-    #         if len(execution_plans) == len(active_agent_ids):
-    #             if all(p == execution_plans[0] for p in execution_plans):
-    #                 print("✅ All agents reached consensus!")
-    #                 return execution_plans[0]
-    #             else:
-    #                 print("❌ EXECUTE plans do not match")
-
-    #     print("❌ Failed to reach consensus")
-    #     # Return the best plan (initial central plan) instead of None
-    #     return best_plan
     def runHMAS1(self):
+        api_calls = 1
         print("\n== Central Planner Proposing Initial Plan ==")
         initial_prompt = self.format_central_prompt(self.env)
         central_plan, _ = self.call_llm(initial_prompt)
@@ -252,12 +208,16 @@ class HMAS1:
         for id, agent in enumerate(self.env.agents):
             agent_prompt = self.format_local_prompt(id, agent, central_plan)
             response, tokens = self.call_llm(agent_prompt)
+            api_calls += 1
             print(f"Agent {id} Response:\n{response}\n")
             local_action_strs.append(response)
 
         final_plan = "\n".join(local_action_strs)
         actions = self.parse_llm_plan(final_plan)
-        self.execute_plan(self.env, actions)
+        print("\n== Final Plan ==")
+        print(final_plan)
+        return final_plan, api_calls
+        #self.execute_plan(self.env, actions)
 
-hmas = HMAS1(environment_type="boxnet2")
-hmas.runHMAS1()
+# hmas = HMAS1(environment_type="boxnet2")
+# hmas.runHMAS1()
