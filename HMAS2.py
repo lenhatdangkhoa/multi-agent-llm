@@ -3,7 +3,10 @@ from openai import OpenAI
 from dotenv import load_dotenv
 import os
 import BoxNet1
+from HMAS1 import HMAS1
 import BoxNet2_test
+import time
+import re
 
 load_dotenv()
 client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
@@ -13,128 +16,114 @@ class HMAS2:
         self.token_count = 0
         self.environment_type = environment_type
         self.env = BoxNet1.BoxNet1() if environment_type == "boxnet1" else BoxNet2_test.BoxNet2()
-        self.state_action_history = []
 
-    def format_central_prompt(self, feedback=None):
-        lines = ["You are a centralized planner. Provide a plan as a JSON object."]
+    def format_central_prompt(self):
+        # Use the same logic from your HMAS1 to format the initial plan prompt
+        hmas1 = HMAS1(self.environment_type)
+        return hmas1.format_central_prompt(hmas1.env)
 
-        if self.environment_type == "boxnet1":
-            lines.append(f"Environment: BoxNet1 with grid size {self.env.GRID_WIDTH}x{self.env.GRID_HEIGHT}")
-            lines.append("Each agent is fixed in its cell and can only move boxes to adjacent cells.")
-            lines.append("Multiple boxes can occupy the same cell, but a goal can only have one box.")
-        else:  # boxnet2
-            lines.append(f"Environment: BoxNet2 with grid size {self.env.GRID_WIDTH}x{self.env.GRID_HEIGHT}")
-            lines.append("Each agent is responsible for the four corners of its cell.")
-            lines.append("Boxes can only be moved between corners, and each corner can only hold one box.")
-            lines.append("Avoid placing multiple boxes on the same corner to prevent collisions.")
-
-        # Add agent information
-        for i, agent in enumerate(self.env.agents):
-            if self.environment_type == "boxnet1":
-                lines.append(f"- Agent {i} at {agent.position}")
-            else:
-                lines.append(f"- Agent {i} responsible for corners {agent.cell}")
-
-        # Add box information
-        for box in self.env.boxes:
-            if self.environment_type == "boxnet1":
-                lines.append(f"- {box.color} box at positions {box.positions}")
-            else:
-                for pos in box.positions:
-                    lines.append(f"- {box.color} box at corner {pos}")
-
-        # Add goal information
-        for color, positions in self.env.goals.items():
-            lines.append(f"- Goal for {color} at {positions}")
-
-        # Add feedback if provided
-        if feedback:
-            lines.append("\nPrevious agent feedback:")
-            for k, v in feedback.items():
-                lines.append(f"{k}: {v}")
-
-        # Add action instructions
-        lines.append("\nYour plan must only use the following actions for each agent:")
-        if self.environment_type == "boxnet1":
-            lines.append(
-                "- move [color] box from (row,col) to (row,col) [direction] (direction: up, down, left, right)")
-            lines.append("- do nothing")
-        else:
-            lines.append(
-                "- move [color] box from (row,col) to (row,col) [direction] (direction: up, down, left, right)")
-            lines.append("- move [color] box to goal")
-            lines.append("- do nothing")
-
-        lines.append("\nReturn the plan ONLY as a JSON object like this example:")
-        lines.append("{\"Agent0\": \"move blue box from (0,0) to (1,0) down\", \"Agent1\": \"do nothing\"}")
-
+    def format_feedback_prompt(self, agent_id, agent, action):
+        lines = [
+            f"You are Agent {agent_id}. Your job is to review your assigned action:",
+            f"- Assigned Action: {action}",
+            "You must respond with either:",
+            "- 'agree' if the action is acceptable, or",
+            "- 'suggest: [your better action]' if you want to suggest an alternative."
+        ]
         return "\n".join(lines)
-
-    def format_local_prompt(self, agent_id, action):
-        return (
-            f"You are Agent {agent_id}. Do you agree with your assigned action: '{action}'?\n"
-            "Respond ONLY with:\n- AGREE\n- DISAGREE: [reason]"
-        )
 
     def call_llm(self, prompt):
         response = client.chat.completions.create(
             model="gpt-4",
             messages=[
-                {"role": "system", "content": "You are a helpful agent."},
+                {"role": "system", "content": "You are a helpful planner."},
                 {"role": "user", "content": prompt}
             ],
             temperature=0
         )
         self.token_count += response.usage.total_tokens
-        return response.choices[0].message.content.strip()
+        return response.choices[0].message.content.strip(), self.token_count
 
-    def run_planning(self, max_iterations=5):
-        print("--- HMAS-2 Planning ---")
-        feedback = None
-        best_plan = None
-        best_agreement_count = 0
+    def parse_llm_plan(self, text):
+        actions = []
+        pattern_move = r".*?Agent (\d+): move (\w+) box from \((\d+), (\d+)\) to \((\d+), (\d+)\)(?: \[?(\w+)]?)?"
+        pattern_nothing = r".*?Agent (\d+): do nothing"
+        pattern_move_to_goal = r".*?Agent (\d+): move (\w+) box to goal"
 
-        for iteration in range(max_iterations):
-            central_prompt = self.format_central_prompt(feedback)
-            response = self.call_llm(central_prompt)
-            try:
-                current_plan = json.loads(response)
-            except json.JSONDecodeError:
-                print("Central plan invalid")
-                continue  # Try again with the next iteration
+        for line in text.strip().split('\n'):
+            move_match = re.match(pattern_move, line.strip())
+            nothing_match = re.match(pattern_nothing, line.strip())
+            move_to_goal_match = re.match(pattern_move_to_goal, line.strip())
 
-            feedback = {}
-            all_agree = True
-            agreement_count = 0
+            if move_match:
+                agent_id = int(move_match.group(1))
+                color = move_match.group(2)
+                from_pos = (int(move_match.group(3)), int(move_match.group(4)))
+                direction = move_match.group(7)
+                actions.append((agent_id, color, from_pos, direction))
+            elif nothing_match:
+                agent_id = int(nothing_match.group(1))
+                actions.append((agent_id, "none", None, "stay"))
+            elif move_to_goal_match:
+                agent_id = int(move_to_goal_match.group(1))
+                color = move_to_goal_match.group(2)
+                actions.append((agent_id, color, None, "goal"))
+        return actions
 
-            for agent_id, action in current_plan.items():
-                idx = int(agent_id.replace("Agent", ""))
-                prompt = self.format_local_prompt(idx, action)
-                agent_response = self.call_llm(prompt)
-                feedback[agent_id] = agent_response
-                if agent_response.startswith("AGREE"):
-                    agreement_count += 1
-                else:
-                    all_agree = False
+    def execute_plan(self, env, actions):
+        for agent_id, color, from_pos, direction in actions:
+            if color == "none":
+                print(f"Agent {agent_id} does nothing")
+                continue
+            if direction == "goal":
+                env.move_to_goal(color)
+                continue
+            box = next((b for b in env.boxes if b.color == color and from_pos in b.positions), None)
+            if box:
+                success = env.move_box(box, from_pos, direction)
+                print(f"{'✅ Success' if success else '❌ Failed'}: Agent {agent_id} moved {color} box from {from_pos} {direction}")
+            else:
+                print(f"⚠️ Agent {agent_id} could not find {color} box at {from_pos}")
+            time.sleep(0.5)
+        print("\n🧱 Final Environment State:")
+        print(self.env.goals)
+        for box in env.boxes:
+            print(f"{box.color} box positions: {box.positions}")
 
-            # Keep track of the best plan so far
-            if agreement_count > best_agreement_count:
-                best_agreement_count = agreement_count
-                best_plan = current_plan
+    def runHMAS2(self):
+        print("\n== Central Planner Proposing Initial Plan ==")
+        central_prompt = self.format_central_prompt()
+        central_plan, _ = self.call_llm(central_prompt)
+        print(central_plan)
 
-            if all_agree:
-                print("✅ All agents agreed.")
-                return current_plan
+        consensus_reached = False
+        for round_num in range(3):
+            print(f"\n== Feedback Round {round_num+1} ==")
+            agent_feedback = []
 
-        # If no consensus was reached, return the best plan we found
-        if best_plan:
-            print(f"⚠️ Partial consensus reached ({best_agreement_count} agents agreed). Using best plan.")
-            return best_plan
-        else:
-            # If we couldn't get any valid plan, return a default plan
-            print("❌ No valid plan found. Using fallback plan.")
-            fallback_plan = {}
-            for i in range(len(self.env.agents)):
-                fallback_plan[f"Agent{i}"] = "do nothing"
-            return fallback_plan
+            for id, agent in enumerate(self.env.agents):
+                # Get just this agent's action line
+                pattern = rf"Agent {id}:.*"
+                match = re.search(pattern, central_plan)
+                action_line = match.group(0) if match else "do nothing"
+                
+                prompt = self.format_feedback_prompt(id, agent, action_line)
+                feedback, _ = self.call_llm(prompt)
+                print(f"Agent {id} Feedback: {feedback}")
+                agent_feedback.append((id, feedback.strip()))
 
+            if all(fb == "agree" for _, fb in agent_feedback):
+                consensus_reached = True
+                break
+            else:
+                feedback_summary = "\n".join([f"Agent {id}: {fb}" for id, fb in agent_feedback])
+                central_prompt += f"\n\nAgents provided feedback on the plan:\n{feedback_summary}\nPlease revise the plan."
+                central_plan, _ = self.call_llm(central_prompt)
+                print("\n🔁 Revised Plan:\n", central_plan)
+
+        final_actions = self.parse_llm_plan(central_plan)
+        self.execute_plan(self.env, final_actions)
+
+if __name__ == "__main__":
+    hmas2 = HMAS2(environment_type="boxnet2")
+    hmas2.runHMAS2()

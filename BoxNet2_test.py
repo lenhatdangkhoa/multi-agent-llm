@@ -4,8 +4,8 @@ class Box:
         self.positions = positions  
 
 class Agent:
-    def __init__(self, cell):
-        self.cell = cell
+    def __init__(self, position):
+        self.position = position
 
 
 class BoxNet2:

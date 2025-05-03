@@ -70,7 +70,7 @@ class HMAS1:
 
             lines.append("\nAgents:")
             for i, agent in enumerate(env.agents):
-                lines.append(f"- Agent {i} responsible for cells {agent.cell}")
+                lines.append(f"- Agent {i} responsible for cells {agent.position}")
 
             lines.append("\nEach agent is responsible for four corners of its own cell.")
             lines.append("\nIf the blue box is at (0, 1) and the goal is at (0,0), (0,1), (1,0), (1,1), then agent 1 can move this blue box to goal.")
@@ -259,5 +259,5 @@ class HMAS1:
         actions = self.parse_llm_plan(final_plan)
         self.execute_plan(self.env, actions)
 
-hmas = HMAS1(environment_type="boxnet1")
+hmas = HMAS1(environment_type="boxnet2")
 hmas.runHMAS1()
