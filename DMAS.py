@@ -123,7 +123,7 @@ def parse_llm_plan(text):
     return actions
 def query_llm(prompt):
     resp = client.chat.completions.create(
-        model="gpt-4",
+        model="gpt-4.1",
         messages=[{"role":"user","content":prompt}],
         temperature=0
     )

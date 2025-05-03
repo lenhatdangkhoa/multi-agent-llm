@@ -77,7 +77,7 @@ def format_prompt(env):
 def call_llm(prompt):
     """Send the centralized prompt to the LLM."""
     response = client.chat.completions.create(
-        model="gpt-4",  # or "gpt-3.5-turbo"
+        model="gpt-4.1",  # or "gpt-3.5-turbo"
         messages=[{"role": "system", "content": "You are a helpful robot task planner."},
                   {"role": "user", "content": prompt}],
         temperature=0
