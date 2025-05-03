@@ -1,0 +1,11 @@
+environment,framework,success_rate_pct,steps,api_calls,tokens
+BoxNet1,CMAS,72.0,10.2,1.0,764.8
+BoxNet1,DMAS,0.0,8.2,24.0,637.8
+BoxNet1,ETP,76.0,7.4,1.4,1068.4
+BoxNet1,HMAS‑1,80.0,9.4,9.0,3628.8
+BoxNet1,HMAS‑2,48.0,9.4,44.0,9757.2
+BoxNet2,CMAS,92.0,20.0,1.0,1210.4
+BoxNet2,DMAS,0.0,8.4,24.0,1187.2
+BoxNet2,ETP,96.0,10.0,1.8,1865.8
+BoxNet2,HMAS‑1,80.0,20.4,9.0,6305.0
+BoxNet2,HMAS‑2,36.0,10.4,27.0,5589.8

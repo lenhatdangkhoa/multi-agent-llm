@@ -78,14 +78,14 @@ def intialPlan(env):
 
 def call_llm(prompt):
     response = client.chat.completions.create(
-        model="gpt-4",  # or "gpt-3.5-turbo"
+        model="gpt-4.1",  # or "gpt-3.5-turbo"
         messages=[{"role": "system", "content": "You are a helpful robot task planner."},
                   {"role": "user", "content": prompt}],
         temperature=0
     )
     total_tokens = response.usage.total_tokens
     print(f"Total tokens used: {total_tokens}")
-    return response.choices[0].message.content
+    return response.choices[0].message.content, total_tokens
 
 def parse_llm_plan(text):
     actions = []
