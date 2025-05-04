@@ -78,15 +78,14 @@ def intialPlan(env):
 
 def call_llm(prompt):
     response = client.chat.completions.create(
-        model="gpt-4.1",  # or "gpt-3.5-turbo"
+        model="gpt-4",  # or "gpt-3.5-turbo"
         messages=[{"role": "system", "content": "You are a helpful robot task planner."},
                   {"role": "user", "content": prompt}],
         temperature=0
     )
     total_tokens = response.usage.total_tokens
     print(f"Total tokens used: {total_tokens}")
-    return response.choices[0].message.content, total_tokens
-
+    return response.choices[0].message.content
 def parse_llm_plan(text):
     actions = []
 
@@ -151,10 +150,9 @@ def execute_plan(env, actions):
     return True
 
 def runETP():
-    env = BoxNet2_test.BoxNet2()
+    env = BoxNet1.BoxNet1()
     prompt = intialPlan(env)
     response = call_llm(prompt)
-    print(response)
     actions = parse_llm_plan(response)
     iteration = 0
     while (not execute_plan(env, actions) and iteration < 5):
@@ -163,10 +161,9 @@ def runETP():
             print(f"{box.color} box positions: {box.positions}")
         prompt = intialPlan(env)
         response = call_llm(prompt)
-        print(response)
         actions = parse_llm_plan(response)
         iteration += 1
     
+if __name__ == "__main__":
+    runETP()
     
-# if __name__ == "__main__":
-#     runETP()

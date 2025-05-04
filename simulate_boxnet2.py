@@ -106,7 +106,9 @@ def simulate_plan(env, actions, delay=500):
     pygame.display.set_caption("BoxNet2 Simulation")
 
     render_environment(screen, env)
-    pygame.time.wait(2000)
+    pygame.event.pump()
+
+    pygame.time.wait(3000)
 
     for step, (agent_id, color, from_pos, direction) in enumerate(actions):
         print(f"Step {step + 1}: Agent {agent_id} moves {color} box from {from_pos} {direction}")

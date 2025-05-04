@@ -24,6 +24,8 @@ class BoxNet1:
 
     def move_box(self, box, box_location, direction):
         change = {"up": (-1, 0), "down": (1, 0), "left": (0, -1), "right": (0, 1)}
+        if direction not in change.keys():
+            return False
         new_x, new_y = box_location[0] + change[direction][0], box_location[1] + change[direction][1]
         if new_x < 0 or new_x >= self.GRID_WIDTH or new_y < 0 or new_y >= self.GRID_HEIGHT:
             print("Invalid move")

@@ -190,8 +190,3 @@ def dmas_plan(env, boxes, goals):
 
     # return either 2‑ or 3‑tuple
     return actions, api_calls, tokens_used  # tokens are logged in batch tester
-# print(dmas_plan(env.boxes, env.goals))
-# for box in env.boxes:
-#     print(f"Box {box.color} is now at {box.positions}")
-# for goal in env.goals:
-#     print(f"Goal {goal} is at {env.goals[goal]}")
