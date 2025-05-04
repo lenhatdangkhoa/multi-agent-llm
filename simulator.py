@@ -17,7 +17,6 @@ from BoxNet2_test import BoxNet2
 from CMAS import runCMAS
 from HMAS1 import HMAS1
 from HMAS2 import HMAS2
-from ETP import intialPlan, parse_llm_plan
 from DMAS import dmas_plan
 
 
@@ -98,7 +97,7 @@ def run_planner(env, planner_name):
         plan, api_calls = planner.runHMAS2()
         return plan, api_calls, planner.env
     elif planner_name == "ETP":
-
+        from ETP import intialPlan, call_llm, parse_llm_plan
         # Create a copy of the environment for planning
         if isinstance(env, BoxNet1):
             planning_env = BoxNet1()

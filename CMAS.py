@@ -157,5 +157,5 @@ def runCMAS(env):
 
 
 if __name__ == "__main__":
-    env = BoxNet2_test.BoxNet2()
+    env = BoxNet1.BoxNet1()
     runCMAS(env)
